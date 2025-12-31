@@ -1,39 +1,34 @@
-const { Client } = require('whatsapp-web.js');
-const qrcode = require('qrcode-terminal');
+const { default: makeWASocket, useMultiFileAuthState } = require('@whiskeysockets/baileys');
 const express = require('express');
 
 const app = express();
 app.use(express.json());
 
-const client = new Client({
-  puppeteer: {
-    args: ['--no-sandbox', '--disable-setuid-sandbox']
-  }
-});
+async function startBot() {
+  const { state, saveCreds } = await useMultiFileAuthState('auth');
 
-client.on('qr', qr => {
-  console.log('QR_CODE');
-  qrcode.generate(qr, { small: true });
-});
+  const sock = makeWASocket({
+    auth: state,
+    printQRInTerminal: true
+  });
 
-client.on('ready', () => {
-  console.log('WHATSAPP_CONECTADO');
-});
+  sock.ev.on('creds.update', saveCreds);
 
-client.initialize();
+  app.post('/enviar', async (req, res) => {
+    const { numero, mensagem } = req.body;
 
-app.post('/enviar', async (req, res) => {
-  const { numero, mensagem } = req.body;
+    try {
+      await sock.sendMessage(`${numero}@s.whatsapp.net`, { text: mensagem });
+      res.json({ status: 'enviado' });
+    } catch (e) {
+      res.status(500).json({ status: 'erro', erro: e.message });
+    }
+  });
+}
 
-  try {
-    await client.sendMessage(`${numero}@c.us`, mensagem);
-    res.json({ status: 'enviado' });
-  } catch (e) {
-    res.status(500).json({ status: 'erro', erro: e.message });
-  }
-});
+startBot();
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log('API_RODANDO');
+  console.log('API RODANDO');
 });
