@@ -8,8 +8,20 @@ async function startBot() {
   const { state, saveCreds } = await useMultiFileAuthState('auth');
 
   const sock = makeWASocket({
-    auth: state,
-    printQRInTerminal: true
+    auth: state
+  });
+
+  sock.ev.on('connection.update', (update) => {
+    const { qr, connection } = update;
+
+    if (qr) {
+      console.log('📱 ESCANEIE ESTE QR CODE NO WHATSAPP:');
+      console.log(qr);
+    }
+
+    if (connection === 'open') {
+      console.log('✅ WhatsApp conectado com sucesso!');
+    }
   });
 
   sock.ev.on('creds.update', saveCreds);
@@ -30,5 +42,5 @@ startBot();
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log('API RODANDO');
+  console.log('🚀 API RODANDO NA PORTA', PORT);
 });
